@@ -103,6 +103,9 @@ async fn rpc_handler(
             if let Some(tenant) = headers.get("x-tenant-id").and_then(|v| v.to_str().ok()) {
                 fwd_headers.push(("X-Tenant-Id".to_string(), tenant.to_string()));
             }
+            if let Some(role) = headers.get("x-user-role").and_then(|v| v.to_str().ok()) {
+                fwd_headers.push(("X-User-Role".to_string(), role.to_string()));
+            }
 
             // Call upstream
             match state.proxy.call(&tool.method, &expanded, body_value.as_ref(), &fwd_headers).await {
