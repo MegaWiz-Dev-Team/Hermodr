@@ -6,6 +6,35 @@ use crate::registry::ToolDefinition;
 
 pub fn tools() -> Vec<ToolDefinition> {
     vec![
+        // ── Sprint 1 MCP Tools ──
+        ToolDefinition {
+            name: "read_fhir_patient".into(),
+            description: "Retrieve a specific Patient resource via FHIR R4 API.".into(),
+            method: "GET".into(),
+            path: "/fhir/r4/Patient/{patient_id}".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "patient_id": { "type": "string" }
+                },
+                "required": ["patient_id"]
+            }),
+        },
+        ToolDefinition {
+            name: "write_clinical_note".into(),
+            description: "Create a new clinical note for a patient using OpenEMR REST API.".into(),
+            method: "POST".into(),
+            path: "/api/patients/{patient_id}/notes".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "patient_id": { "type": "string", "description": "Patient ID" },
+                    "note_text": { "type": "string", "description": "Clinical note text" }
+                },
+                "required": ["patient_id", "note_text"]
+            }),
+        },
+
         // ── Sprint 33 FHIR tools ──
         ToolDefinition {
             name: "get_patient_medical_history".into(),
@@ -138,7 +167,7 @@ mod tests {
 
     #[test]
     fn test_tool_count() {
-        assert_eq!(tools().len(), 6);
+        assert_eq!(tools().len(), 8);
     }
 
     #[test]

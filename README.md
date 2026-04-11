@@ -4,6 +4,14 @@
 
 Lightweight Rust JSON-RPC 2.0 bridge that wraps any REST service as [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) tools for the **Asgard AI Platform**.
 
+### 🏥 Role in Multi-Agent Ecosystem
+
+> **Universal MCP Sidecar (ผู้ส่งสาร)** — Hermóðr ครอบ Legacy Service (Eir, Heimdall, Yggdrasil) ให้พูดภาษา MCP ได้ทันที โดยไม่ต้องแก้โค้ดเดิม — เป็น Bridge ระหว่าง REST API กับ MCP Protocol
+>
+> **Bridges:** Eir (FHIR) • Heimdall (LLM) • Yggdrasil (Auth)
+>
+> 📖 [Full Architecture →](https://github.com/MegaWiz-Dev-Team/Asgard/blob/main/docs/roadmap/MultiAgent_Architecture_Plan.md) | [Sprint Plan →](https://github.com/MegaWiz-Dev-Team/Asgard/blob/main/docs/roadmap/MultiAgent_Sprint_Plan.md)
+
 ## Architecture
 
 ```

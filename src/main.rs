@@ -153,6 +153,12 @@ pub fn build_app(service_name: &str, upstream_url: &str) -> Router {
             registry.register(tool);
         }
     }
+    if name_lower.contains("heimdall") {
+        for tool in services::heimdall::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
 
     if registry.count() == 0 {
         tracing::warn!("⚠️ No built-in tools for service {service_name}");
@@ -212,6 +218,9 @@ mod tests {
         for tool in services::eir::tools() {
             registry.register(tool);
         }
+        for tool in services::heimdall::tools() {
+            registry.register(tool);
+        }
 
         // We use a mock upstream URL (tests won't actually call it for these tests)
         let state = Arc::new(AppState {
@@ -260,12 +269,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_tools_list_returns_4_tools() {
+    async fn test_tools_list_returns_tools() {
         let app = test_app();
         let resp = rpc_request(&app, r#"{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}"#).await;
         let result = resp.result.unwrap();
         let tools = result["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 8); // 2 yggdrasil + 6 eir
+        assert_eq!(tools.len(), 11); // 2 yggdrasil + 8 eir + 1 heimdall
     }
 
     #[tokio::test]

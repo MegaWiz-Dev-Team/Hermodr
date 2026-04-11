@@ -2,3 +2,4 @@
 
 pub mod eir;
 pub mod yggdrasil;
+pub mod heimdall;
