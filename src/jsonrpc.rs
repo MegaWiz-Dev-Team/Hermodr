@@ -91,10 +91,7 @@ mod tests {
 
     #[test]
     fn test_response_success_serialization() {
-        let resp = Response::success(
-            serde_json::json!(1),
-            serde_json::json!({"tools": []}),
-        );
+        let resp = Response::success(serde_json::json!(1), serde_json::json!({"tools": []}));
         let json = serde_json::to_value(&resp).unwrap();
         assert_eq!(json["jsonrpc"], "2.0");
         assert!(json.get("error").is_none());

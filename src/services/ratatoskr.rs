@@ -1,4 +1,4 @@
-//! Yggdrasil MCP tools — Zitadel IAM integration.
+//! Ratatoskr MCP tools — Shared headless browser execution.
 
 use crate::registry::ToolDefinition;
 

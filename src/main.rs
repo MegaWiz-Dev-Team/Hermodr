@@ -11,13 +11,17 @@ mod proxy;
 mod registry;
 mod services;
 
+use axum::{
+    extract::State,
+    http::HeaderMap,
+    routing::{get, post},
+    Json, Router,
+};
 use std::sync::Arc;
-use axum::{extract::State, http::HeaderMap, routing::{get, post}, Json, Router};
 use tracing_subscriber::EnvFilter;
 
 use crate::jsonrpc::{
-    Request, Response, ToolCallParams, CODE_INVALID_PARAMS,
-    CODE_METHOD_NOT_FOUND, CODE_PARSE_ERROR,
+    Request, Response, ToolCallParams, CODE_INVALID_PARAMS, CODE_METHOD_NOT_FOUND, CODE_PARSE_ERROR,
 };
 use crate::path::{expand_path, extract_body_args};
 use crate::proxy::Proxy;
@@ -25,10 +29,14 @@ use crate::registry::ToolRegistry;
 
 // ─── Shared State ────────────────────────────────────────────────────────
 
-struct AppState {
-    registry: ToolRegistry,
-    proxy: Proxy,
-    service_name: String,
+pub struct AppState {
+    pub registry: ToolRegistry,
+    pub proxy: Proxy,
+    pub service_name: String,
+    pub wazuh_auth_mode: String,
+    pub wazuh_user: String,
+    pub wazuh_pass: String,
+    pub wazuh_token: tokio::sync::RwLock<Option<String>>,
 }
 
 // ─── Handlers ────────────────────────────────────────────────────────────
@@ -74,7 +82,11 @@ async fn rpc_handler(
             let params: ToolCallParams = match serde_json::from_value(req.params) {
                 Ok(p) => p,
                 Err(e) => {
-                    return Json(Response::error(id, CODE_INVALID_PARAMS, format!("Invalid params: {}", e)));
+                    return Json(Response::error(
+                        id,
+                        CODE_INVALID_PARAMS,
+                        format!("Invalid params: {}", e),
+                    ));
                 }
             };
 
@@ -107,8 +119,19 @@ async fn rpc_handler(
                 fwd_headers.push(("X-User-Role".to_string(), role.to_string()));
             }
 
+            if state.service_name.to_lowercase().contains("wazuh") {
+                match services::wazuh::get_auth_header(&state).await {
+                    Ok((k, v)) => fwd_headers.push((k, v)),
+                    Err(e) => return Json(Response::error(id, e.code, e.message)),
+                }
+            }
+
             // Call upstream
-            match state.proxy.call(&tool.method, &expanded, body_value.as_ref(), &fwd_headers).await {
+            match state
+                .proxy
+                .call(&tool.method, &expanded, body_value.as_ref(), &fwd_headers)
+                .await
+            {
                 Ok(result) => {
                     let text = serde_json::to_string(&result).unwrap_or_default();
                     Json(Response::success(
@@ -122,7 +145,11 @@ async fn rpc_handler(
             }
         }
 
-        _ => Json(Response::error(id, CODE_METHOD_NOT_FOUND, format!("method not found: {}", req.method))),
+        _ => Json(Response::error(
+            id,
+            CODE_METHOD_NOT_FOUND,
+            format!("method not found: {}", req.method),
+        )),
     }
 }
 
@@ -136,7 +163,13 @@ async fn health_handler(State(state): State<Arc<AppState>>) -> Json<serde_json::
 
 // ─── App Builder ─────────────────────────────────────────────────────────
 
-pub fn build_app(service_name: &str, upstream_url: &str) -> Router {
+pub fn build_app(
+    service_name: &str,
+    upstream_url: &str,
+    wazuh_auth_mode: String,
+    wazuh_user: String,
+    wazuh_pass: String,
+) -> Router {
     let registry = ToolRegistry::new();
 
     // Load tools based on service name
@@ -160,6 +193,73 @@ pub fn build_app(service_name: &str, upstream_url: &str) -> Router {
         }
     }
 
+    if name_lower.contains("wazuh") {
+        for tool in services::wazuh::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("mimir") {
+        for tool in services::mimir::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("bifrost") {
+        for tool in services::bifrost::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("vardr") {
+        for tool in services::vardr::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("forseti") {
+        for tool in services::forseti::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("fenrir") {
+        for tool in services::fenrir::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("huginn") {
+        for tool in services::huginn::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("muninn") {
+        for tool in services::muninn::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("ratatoskr") {
+        for tool in services::ratatoskr::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("mjolnir") {
+        for tool in services::mjolnir::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("odin") {
+        for tool in services::odin::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+
     if registry.count() == 0 {
         tracing::warn!("⚠️ No built-in tools for service {service_name}");
     }
@@ -168,6 +268,10 @@ pub fn build_app(service_name: &str, upstream_url: &str) -> Router {
         registry,
         proxy: Proxy::new(upstream_url),
         service_name: service_name.to_string(),
+        wazuh_auth_mode,
+        wazuh_user,
+        wazuh_pass,
+        wazuh_token: tokio::sync::RwLock::new(None),
     });
 
     Router::new()
@@ -181,19 +285,34 @@ pub fn build_app(service_name: &str, upstream_url: &str) -> Router {
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
         .init();
 
     let service_name = std::env::var("SERVICE_NAME").unwrap_or_else(|_| "mcp-sidecar".into());
-    let upstream_url = std::env::var("UPSTREAM_URL").unwrap_or_else(|_| "http://localhost:8080".into());
+    let upstream_url =
+        std::env::var("UPSTREAM_URL").unwrap_or_else(|_| "http://localhost:8080".into());
     let port = std::env::var("PORT").unwrap_or_else(|_| "8090".into());
     let addr = format!("0.0.0.0:{}", port);
 
     tracing::info!(service = %service_name, upstream = %upstream_url, addr = %addr, "Starting MCP Sidecar");
 
-    let app = build_app(&service_name, &upstream_url);
+    let wazuh_auth_mode = std::env::var("WAZUH_AUTH_MODE").unwrap_or_else(|_| "jwt".into());
+    let wazuh_user = std::env::var("WAZUH_USER").unwrap_or_else(|_| "".into());
+    let wazuh_pass = std::env::var("WAZUH_PASS").unwrap_or_else(|_| "".into());
 
-    let listener = tokio::net::TcpListener::bind(&addr).await.expect("Failed to bind");
+    let app = build_app(
+        &service_name,
+        &upstream_url,
+        wazuh_auth_mode,
+        wazuh_user,
+        wazuh_pass,
+    );
+
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .expect("Failed to bind");
     tracing::info!("MCP Sidecar listening on {addr}");
 
     axum::serve(listener, app).await.expect("Server error");
@@ -204,11 +323,11 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::jsonrpc::CODE_INTERNAL_ERROR;
     use axum::body::Body;
     use axum::http::{Request as HttpRequest, StatusCode};
     use axum::routing::post as axum_post;
     use tower::ServiceExt;
-    use crate::jsonrpc::CODE_INTERNAL_ERROR;
 
     fn test_app() -> Router {
         let registry = ToolRegistry::new();
@@ -221,12 +340,49 @@ mod tests {
         for tool in services::heimdall::tools() {
             registry.register(tool);
         }
+        for tool in services::wazuh::tools() {
+            registry.register(tool);
+        }
+        for tool in services::mimir::tools() {
+            registry.register(tool);
+        }
+        for tool in services::bifrost::tools() {
+            registry.register(tool);
+        }
+        for tool in services::vardr::tools() {
+            registry.register(tool);
+        }
+        for tool in services::forseti::tools() {
+            registry.register(tool);
+        }
+        for tool in services::fenrir::tools() {
+            registry.register(tool);
+        }
+        for tool in services::huginn::tools() {
+            registry.register(tool);
+        }
+        for tool in services::muninn::tools() {
+            registry.register(tool);
+        }
+        for tool in services::ratatoskr::tools() {
+            registry.register(tool);
+        }
+        for tool in services::mjolnir::tools() {
+            registry.register(tool);
+        }
+        for tool in services::odin::tools() {
+            registry.register(tool);
+        }
 
         // We use a mock upstream URL (tests won't actually call it for these tests)
         let state = Arc::new(AppState {
             registry,
             proxy: Proxy::new("http://localhost:99999"),
             service_name: "test-sidecar".into(),
+            wazuh_auth_mode: "jwt".into(),
+            wazuh_user: "".into(),
+            wazuh_pass: "".into(),
+            wazuh_token: tokio::sync::RwLock::new(None),
         });
 
         Router::new()
@@ -244,7 +400,9 @@ mod tests {
             .unwrap();
 
         let resp = app.clone().oneshot(req).await.unwrap();
-        let body = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let body = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
         serde_json::from_slice(&body).unwrap()
     }
 
@@ -262,7 +420,11 @@ mod tests {
     #[tokio::test]
     async fn test_initialize() {
         let app = test_app();
-        let resp = rpc_request(&app, r#"{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}"#).await;
+        let resp = rpc_request(
+            &app,
+            r#"{"jsonrpc":"2.0","method":"initialize","params":{},"id":1}"#,
+        )
+        .await;
         assert!(resp.result.is_some());
         let result = resp.result.unwrap();
         assert_eq!(result["serverInfo"]["name"], "test-sidecar");
@@ -271,10 +433,15 @@ mod tests {
     #[tokio::test]
     async fn test_tools_list_returns_tools() {
         let app = test_app();
-        let resp = rpc_request(&app, r#"{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}"#).await;
+        let resp = rpc_request(
+            &app,
+            r#"{"jsonrpc":"2.0","method":"tools/list","params":{},"id":1}"#,
+        )
+        .await;
         let result = resp.result.unwrap();
+        let expected_tools = 18;
         let tools = result["tools"].as_array().unwrap();
-        assert_eq!(tools.len(), 11); // 2 yggdrasil + 8 eir + 1 heimdall
+        assert_eq!(tools.len(), expected_tools);
     }
 
     #[tokio::test]
@@ -287,7 +454,11 @@ mod tests {
     #[tokio::test]
     async fn test_unknown_method_returns_method_not_found() {
         let app = test_app();
-        let resp = rpc_request(&app, r#"{"jsonrpc":"2.0","method":"foo/bar","params":{},"id":1}"#).await;
+        let resp = rpc_request(
+            &app,
+            r#"{"jsonrpc":"2.0","method":"foo/bar","params":{},"id":1}"#,
+        )
+        .await;
         assert_eq!(resp.error.unwrap().code, CODE_METHOD_NOT_FOUND);
     }
 
@@ -297,7 +468,8 @@ mod tests {
         let resp = rpc_request(
             &app,
             r#"{"jsonrpc":"2.0","method":"tools/call","params":{"name":"nonexistent"},"id":1}"#,
-        ).await;
+        )
+        .await;
         assert_eq!(resp.error.unwrap().code, CODE_METHOD_NOT_FOUND);
     }
 }

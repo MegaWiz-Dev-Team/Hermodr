@@ -48,8 +48,13 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn make_args(pairs: &[(&str, serde_json::Value)]) -> serde_json::Map<String, serde_json::Value> {
-        pairs.iter().map(|(k, v)| (k.to_string(), v.clone())).collect()
+    fn make_args(
+        pairs: &[(&str, serde_json::Value)],
+    ) -> serde_json::Map<String, serde_json::Value> {
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.clone()))
+            .collect()
     }
 
     #[test]
@@ -61,15 +66,15 @@ mod tests {
     #[test]
     fn test_expand_single_param() {
         let args = make_args(&[("user_id", json!("u-123"))]);
-        assert_eq!(expand_path("/users/{user_id}/roles", &args), "/users/u-123/roles");
+        assert_eq!(
+            expand_path("/users/{user_id}/roles", &args),
+            "/users/u-123/roles"
+        );
     }
 
     #[test]
     fn test_expand_multiple_params() {
-        let args = make_args(&[
-            ("org_id", json!("org-1")),
-            ("user_id", json!("u-2")),
-        ]);
+        let args = make_args(&[("org_id", json!("org-1")), ("user_id", json!("u-2"))]);
         assert_eq!(
             expand_path("/orgs/{org_id}/users/{user_id}", &args),
             "/orgs/org-1/users/u-2"
@@ -84,10 +89,7 @@ mod tests {
 
     #[test]
     fn test_extract_body_removes_path_params() {
-        let args = make_args(&[
-            ("user_id", json!("u-1")),
-            ("query", json!("hello")),
-        ]);
+        let args = make_args(&[("user_id", json!("u-1")), ("query", json!("hello"))]);
         let body = extract_body_args("/users/{user_id}", &args).unwrap();
         assert_eq!(body.len(), 1);
         assert_eq!(body["query"], json!("hello"));

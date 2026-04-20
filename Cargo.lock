@@ -485,6 +485,7 @@ version = "0.1.0"
 dependencies = [
  "axum 0.8.8",
  "axum-test",
+ "base64",
  "regex",
  "reqwest",
  "serde",
