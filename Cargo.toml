@@ -1,6 +1,6 @@
 [package]
 name = "hermodr"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Hermóðr — Universal MCP Sidecar. Lightweight Rust JSON-RPC 2.0 bridge that wraps REST services as MCP tools (Asgard AI Platform)"
 
