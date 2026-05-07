@@ -254,6 +254,12 @@ pub fn build_app(
             registry.register(tool);
         }
     }
+    if name_lower.contains("syn") {
+        for tool in services::syn::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
     if name_lower.contains("mjolnir") {
         for tool in services::mjolnir::tools() {
             tracing::info!("  ✅ registered tool: {}", tool.name);
@@ -374,6 +380,9 @@ mod tests {
         for tool in services::ratatoskr::tools() {
             registry.register(tool);
         }
+        for tool in services::syn::tools() {
+            registry.register(tool);
+        }
         for tool in services::mjolnir::tools() {
             registry.register(tool);
         }
@@ -446,7 +455,8 @@ mod tests {
         )
         .await;
         let result = resp.result.unwrap();
-        // mimir.rs now exposes 2 tools (list_agents + ocr_extract from B-50d)
+        // mimir.rs back to 1 tool (list_agents); syn.rs adds 1 (ocr_extract).
+        // Net total unchanged from the temporary mimir(2) state.
         let expected_tools = 19;
         let tools = result["tools"].as_array().unwrap();
         assert_eq!(tools.len(), expected_tools);
