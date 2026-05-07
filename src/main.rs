@@ -180,7 +180,14 @@ pub fn build_app(
             registry.register(tool);
         }
     }
-    if name_lower.contains("eir") {
+    // eir_medical must be checked BEFORE the bare "eir" prefix-match,
+    // otherwise SERVICE_NAME=eir_medical would route to OpenEMR FHIR tools.
+    if name_lower.contains("eir_medical") || name_lower.contains("eir-medical") {
+        for tool in services::eir_medical::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    } else if name_lower.contains("eir") {
         for tool in services::eir::tools() {
             tracing::info!("  ✅ registered tool: {}", tool.name);
             registry.register(tool);
@@ -439,7 +446,8 @@ mod tests {
         )
         .await;
         let result = resp.result.unwrap();
-        let expected_tools = 18;
+        // mimir.rs now exposes 2 tools (list_agents + ocr_extract from B-50d)
+        let expected_tools = 19;
         let tools = result["tools"].as_array().unwrap();
         assert_eq!(tools.len(), expected_tools);
     }
