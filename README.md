@@ -1,5 +1,10 @@
 # Hermóðr — Universal MCP Sidecar
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Built with Rust](https://img.shields.io/badge/Rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
+[![MCP Protocol](https://img.shields.io/badge/MCP-2024--11--05-green.svg)](https://modelcontextprotocol.io/)
+[![Part of Asgard](https://img.shields.io/badge/part%20of-Asgard%20AI%20Platform-purple.svg)](https://github.com/MegaWiz-Dev-Team/Asgard)
+
 > *Hermóðr, the messenger of the gods, who travels between realms.*
 
 Lightweight Rust JSON-RPC 2.0 bridge that wraps any REST service as [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) tools for the **Asgard AI Platform**.
