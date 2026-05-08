@@ -46,8 +46,14 @@ pub fn tools() -> Vec<ToolDefinition> {
 }
 
 pub async fn get_auth_header(_state: &crate::AppState) -> Result<(String, String), crate::jsonrpc::RpcError> {
-    let user = std::env::var("WAZUH_API_USER").unwrap_or_else(|_| "wazuh-wui".to_string());
-    let pass = std::env::var("WAZUH_API_PASSWORD").unwrap_or_else(|_| "wazuh-wui".to_string());
+    let user = std::env::var("WAZUH_API_USER").map_err(|_| crate::jsonrpc::RpcError {
+        code: crate::jsonrpc::CODE_INTERNAL_ERROR,
+        message: "WAZUH_API_USER environment variable not set".to_string(),
+    })?;
+    let pass = std::env::var("WAZUH_API_PASSWORD").map_err(|_| crate::jsonrpc::RpcError {
+        code: crate::jsonrpc::CODE_INTERNAL_ERROR,
+        message: "WAZUH_API_PASSWORD environment variable not set".to_string(),
+    })?;
     use base64::{engine::general_purpose, Engine as _};
     let token = general_purpose::STANDARD.encode(format!("{}:{}", user, pass));
     Ok(("Authorization".to_string(), format!("Basic {}", token)))

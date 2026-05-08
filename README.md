@@ -92,4 +92,6 @@ Hermóðr implements [MCP JSON-RPC 2.0](https://modelcontextprotocol.io/):
 
 ## License
 
-GNU General Public License 3
+Licensed under the **GNU Affero General Public License v3.0** — see [LICENSE](./LICENSE).
+
+A commercial license is available for organisations who cannot comply with AGPL-3.0; contact `paripol@megawiz.co` for terms.
