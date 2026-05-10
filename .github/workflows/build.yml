@@ -1,5 +1,10 @@
-# 📨 Hermodr — Build & Push images to ghcr.io (hermodr-yggdrasil + ratatoskr variant)
+# 📨 Hermodr — Build & Push images to ghcr.io
 # Polyrepo CI pattern (org-wide standard)
+#
+# Hermodr is a single Rust binary that becomes different MCP bridges
+# at runtime via env vars (SERVICE_NAME=yggdrasil|eir|wazuh, UPSTREAM_URL).
+# We publish the same image under multiple ghcr tags so K8s manifests
+# can reference whichever name fits the deployment context.
 
 name: Build
 
@@ -18,11 +23,6 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        image:
-          - hermodr-yggdrasil
     permissions:
       contents: read
       packages: write
@@ -44,10 +44,14 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ env.REGISTRY }}/megawiz-dev-team/${{ matrix.image }}:${{ github.sha }}
-            ${{ env.REGISTRY }}/megawiz-dev-team/${{ matrix.image }}:latest
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+            ${{ env.REGISTRY }}/megawiz-dev-team/hermodr:${{ github.sha }}
+            ${{ env.REGISTRY }}/megawiz-dev-team/hermodr:latest
+            ${{ env.REGISTRY }}/megawiz-dev-team/asgard-hermodr:${{ github.sha }}
+            ${{ env.REGISTRY }}/megawiz-dev-team/asgard-hermodr:latest
+            ${{ env.REGISTRY }}/megawiz-dev-team/hermodr-yggdrasil:${{ github.sha }}
+            ${{ env.REGISTRY }}/megawiz-dev-team/hermodr-yggdrasil:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   ci-success:
     needs: build
@@ -55,5 +59,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          if [ "${{ needs.build.result }}" != "success" ]; then echo "❌"; exit 1; fi
-          echo "✅"
+          if [ "${{ needs.build.result }}" != "success" ]; then echo "❌ build failed"; exit 1; fi
+          echo "✅ build passed"
