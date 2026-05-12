@@ -114,19 +114,67 @@ pub fn tools() -> Vec<ToolDefinition> {
             }),
         },
 
-        // ─── ICD-10 lookup ──────────────────────────────────────────────────
+        // ─── ICD-10-CM lookup (US/international, English) ──────────────────
+        //
+        // NLM Clinical Tables. English-only. Use for international research
+        // workflows or when a Thai agent needs cross-reference to US codes.
+        // For Thai clinical work, prefer `icd10_tm_lookup` (Mimir-backed,
+        // anamai-moph-2010 source-version, bilingual th/en).
         ToolDefinition {
             name: "icd10_lookup".into(),
-            description: "Look up ICD-10-CM codes by term. Uses NLM Clinical Tables API. Returns matching codes + descriptions.".into(),
+            description: "ICD-10-CM lookup (US/international, English only). Uses NLM Clinical Tables API. For Thai clinical use, prefer `icd10_tm_lookup` instead.".into(),
             method: "GET".into(),
             path: "/api/icd10cm/v3/search?sf=code,name&terms={term}&maxList={max}".into(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
-                    "term": { "type": "string", "description": "search term (e.g. 'diabetes type 2')" },
+                    "term": { "type": "string", "description": "English search term (e.g. 'diabetes type 2')" },
                     "max": { "type": "integer", "default": 10 }
                 },
                 "required": ["term"]
+            }),
+        },
+
+        // ─── ICD-10-TM lookup (Thai, MoPH-anamai) ──────────────────────────
+        //
+        // Mimir-backed (Sprint 48). Source = anamai-moph-2010 (Department
+        // of Health, MoPH) by default; future moph-tm-2017 slot when the
+        // B-48a licensing letter completes. Bilingual (th + en labels);
+        // BGE-M3 multilingual semantic search via Qdrant `icd10-th`.
+        //
+        // Use for any Thai clinical workflow — claims to สปสช., HOSxP /
+        // MoPH HIS, medical certificates, insurance UW with Thai diagnoses.
+        ToolDefinition {
+            name: "icd10_tm_lookup".into(),
+            description: "Thai ICD-10-TM lookup (MoPH anamai source). Bilingual th/en — pass Thai or English query. Returns code + th_label + en_label + chapter + DRG mapping. Use for Thai clinical workflows, claims, insurance UW.".into(),
+            method: "GET".into(),
+            path: "/api/v1/icd10/lookup?q={q}&locale={locale}&mode={mode}&limit={limit}".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "q": {
+                        "type": "string",
+                        "description": "Thai or English search term — e.g. 'ไข้หวัดใหญ่', 'pneumonia', or an ICD code like 'J18.9'"
+                    },
+                    "locale": {
+                        "type": "string",
+                        "description": "Which label fields to search. Defaults to 'both'.",
+                        "enum": ["en", "th", "both"],
+                        "default": "both"
+                    },
+                    "mode": {
+                        "type": "string",
+                        "description": "Search strategy. Defaults to 'auto' (exact code → prefix → naive fulltext).",
+                        "enum": ["auto", "exact", "prefix", "naive"],
+                        "default": "auto"
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Max results (default 10, max 50).",
+                        "default": 10
+                    }
+                },
+                "required": ["q"]
             }),
         },
 
@@ -204,8 +252,16 @@ mod tests {
 
     #[test]
     fn test_tool_count() {
-        // 9 tools at Sprint 42 v1: pubmed×2, ct.gov×2, fda, icd10, rxnav×2, web_fetch, medcalc
-        assert_eq!(tools().len(), 10);
+        // 11 tools: pubmed×2, ct.gov×2, fda, icd10 (CM), icd10_tm (Thai),
+        // rxnav×2, web_fetch, medcalc
+        assert_eq!(tools().len(), 11);
+    }
+
+    #[test]
+    fn test_icd10_tm_tool_present() {
+        let names: Vec<_> = tools().into_iter().map(|t| t.name).collect();
+        assert!(names.contains(&"icd10_tm_lookup".into()), "icd10_tm_lookup missing");
+        assert!(names.contains(&"icd10_lookup".into()), "icd10_lookup (CM) still present");
     }
 
     #[test]
