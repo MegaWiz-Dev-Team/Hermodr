@@ -1,0 +1,137 @@
+# Cross-Tenant A2A Capability Registry — Hermodr Gateway
+#
+# Mirrors the `cross_tenant_capabilities` MariaDB table.
+# DB row is authoritative at runtime; this YAML is the source-of-truth artifact
+# that gets migrated into DB via `scripts/sync_xtenant_capabilities.py`.
+#
+# Adding a capability here DOES NOT activate it — it must be:
+#   1. Synced to MariaDB (`active=true`)
+#   2. Approved by a Tenant Admin on BOTH src and dst tenants (review log)
+#   3. Tyr alert rule for that capability exists
+#
+# Convention: lowercase snake_case capability names. Inputs are JSON Schema.
+# Outputs are NOT enumerated here — Hermodr proxies whatever dst Bifrost returns.
+# Sensitive output filtering is dst's responsibility (it knows the consent scope).
+
+version: 1
+schema_version: "2026-05-11"
+
+# ---------------------------------------------------------------------------
+# Route: asgard_insurance → asgard_medical
+# Purpose: Insurance underwriting needs scoped clinical data with patient consent
+# ---------------------------------------------------------------------------
+- src_tenant_id: asgard_insurance
+  dst_tenant_id: asgard_medical
+  capability: fetch_medical_bundle
+  description: |
+    Return a FHIR Bundle redacted to the consent scope. Insurance side uses
+    this for the underwriting risk assessment step.
+  requires_consent: true
+  consent_purpose: underwriting
+  rate_limit_per_min: 30
+  rate_limit_per_day: 500
+  input_schema:
+    type: object
+    required: [consent_id, application_id]
+    properties:
+      consent_id:     { type: string, format: uuid }
+      application_id: { type: string, format: uuid }
+      fields:         { type: array, items: { type: string } }
+      date_from:      { type: string, format: date }
+      date_to:        { type: string, format: date }
+  output_redaction:
+    # dst (asgard_medical) MUST enforce these before responding
+    - drop_if_no_consent_field: [SSN, NationalID]
+    - hash_only:                [HN, applicant_external_id]
+  upstream:
+    # Routed to Eir Gateway inside asgard_medical
+    target_service: eir
+    target_method: POST
+    target_path: /fhir/Bundle/_search
+  audit:
+    event_type_request:  CROSS_TENANT_A2A_REQUEST
+    event_type_response: CROSS_TENANT_A2A_RESPONSE
+    event_type_denied:   CROSS_TENANT_A2A_DENIED
+  tyr_alert_rule_id: 100201
+
+- src_tenant_id: asgard_insurance
+  dst_tenant_id: asgard_medical
+  capability: verify_patient_identity
+  description: |
+    Confirm that an applicant_external_id matches a patient HN in asgard_medical.
+    Returns boolean + matched HN hash. No PHI in response.
+  requires_consent: false   # Identity matching alone, no clinical data exposed
+  rate_limit_per_min: 120
+  rate_limit_per_day: 5000
+  input_schema:
+    type: object
+    required: [applicant_external_id, signed_proof]
+    properties:
+      applicant_external_id: { type: string }
+      signed_proof:          { type: string }
+  upstream:
+    target_service: eir
+    target_method: POST
+    target_path: /identity/verify
+  audit:
+    event_type_request:  CROSS_TENANT_A2A_REQUEST
+    event_type_response: CROSS_TENANT_A2A_RESPONSE
+    event_type_denied:   CROSS_TENANT_A2A_DENIED
+  tyr_alert_rule_id: 100202
+
+- src_tenant_id: asgard_insurance
+  dst_tenant_id: asgard_medical
+  capability: get_treatment_summary
+  description: |
+    Return a structured summary of treatments for given ICD-10 codes within
+    consent scope. Used for risk stratification.
+  requires_consent: true
+  consent_purpose: underwriting
+  rate_limit_per_min: 60
+  rate_limit_per_day: 2000
+  input_schema:
+    type: object
+    required: [consent_id, condition_codes]
+    properties:
+      consent_id:      { type: string, format: uuid }
+      condition_codes: { type: array, items: { type: string } }
+  upstream:
+    target_service: eir
+    target_method: POST
+    target_path: /summary/by-conditions
+  audit:
+    event_type_request:  CROSS_TENANT_A2A_REQUEST
+    event_type_response: CROSS_TENANT_A2A_RESPONSE
+    event_type_denied:   CROSS_TENANT_A2A_DENIED
+  tyr_alert_rule_id: 100203
+
+- src_tenant_id: asgard_insurance
+  dst_tenant_id: asgard_medical
+  capability: list_authorized_consents
+  description: |
+    List ACTIVE FHIR Consent resources for an applicant. Metadata only — no PHI.
+    Used by underwriting intake to discover what data the applicant has authorized.
+  requires_consent: false   # Listing consent metadata is itself permitted by applicant signup
+  rate_limit_per_min: 60
+  rate_limit_per_day: 1000
+  input_schema:
+    type: object
+    required: [applicant_external_id]
+    properties:
+      applicant_external_id: { type: string }
+  upstream:
+    target_service: eir
+    target_method: GET
+    target_path: /Consent
+  audit:
+    event_type_request:  CROSS_TENANT_A2A_REQUEST
+    event_type_response: CROSS_TENANT_A2A_RESPONSE
+    event_type_denied:   CROSS_TENANT_A2A_DENIED
+  tyr_alert_rule_id: 100204
+
+# ---------------------------------------------------------------------------
+# Reverse route asgard_medical → asgard_insurance: INTENTIONALLY EMPTY
+# Chinese Wall: clinical side does NOT see underwriting outcomes. If a
+# legitimate exception arises (e.g. premium update notification), add the
+# capability here AND open a regulator-facing justification doc.
+# ---------------------------------------------------------------------------
