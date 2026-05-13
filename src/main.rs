@@ -266,6 +266,12 @@ pub fn build_app(
             registry.register(tool);
         }
     }
+    if name_lower.contains("insurance") {
+        for tool in services::insurance::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
     if name_lower.contains("odin") {
         for tool in services::odin::tools() {
             tracing::info!("  ✅ registered tool: {}", tool.name);
@@ -389,6 +395,9 @@ mod tests {
         for tool in services::odin::tools() {
             registry.register(tool);
         }
+        for tool in services::insurance::tools() {
+            registry.register(tool);
+        }
 
         // We use a mock upstream URL (tests won't actually call it for these tests)
         let state = Arc::new(AppState {
@@ -456,8 +465,8 @@ mod tests {
         .await;
         let result = resp.result.unwrap();
         // mimir.rs back to 1 tool (list_agents); syn.rs adds 1 (ocr_extract).
-        // Net total unchanged from the temporary mimir(2) state.
-        let expected_tools = 19;
+        // insurance.rs adds 2 tools.
+        let expected_tools = 21;
         let tools = result["tools"].as_array().unwrap();
         assert_eq!(tools.len(), expected_tools);
     }

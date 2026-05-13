@@ -14,6 +14,7 @@ pub mod odin;
 pub mod ratatoskr;
 // Sprint 50 B-50d: Syn — OCR / vision tools (chandra + PaddleOCR + Gemini)
 pub mod syn;
+pub mod insurance;
 pub mod vardr;
 pub mod wazuh;
 pub mod yggdrasil;
