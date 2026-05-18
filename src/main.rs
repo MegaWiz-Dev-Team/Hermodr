@@ -464,9 +464,12 @@ mod tests {
         )
         .await;
         let result = resp.result.unwrap();
-        // mimir.rs back to 1 tool (list_agents); syn.rs adds 1 (ocr_extract).
-        // insurance.rs adds 2 tools.
-        let expected_tools = 21;
+        // mimir.rs grew to 11 tools (Sprint 2 W2.5 added 6 PrimeKG graph-native
+        // tools: lookup_entity / neighbors / drug_interactions / disease_drugs /
+        // symptom_to_disease / path); syn.rs adds 1 (ocr_extract); insurance.rs
+        // adds 2. Bump this count when adding or removing tools from any
+        // service module.
+        let expected_tools = 32;
         let tools = result["tools"].as_array().unwrap();
         assert_eq!(tools.len(), expected_tools);
     }
