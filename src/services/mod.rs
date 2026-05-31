@@ -1,12 +1,14 @@
 //! Service tool definitions module.
 
 pub mod bifrost;
+pub mod claude_cli;
 pub mod eir;
 pub mod eir_medical;
 pub mod fenrir;
 pub mod forseti;
 pub mod heimdall;
 pub mod huginn;
+pub mod loki;
 pub mod mimir;
 pub mod mjolnir;
 pub mod muninn;

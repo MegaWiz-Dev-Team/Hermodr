@@ -242,6 +242,12 @@ pub fn build_app(
             registry.register(tool);
         }
     }
+    if name_lower.contains("loki") {
+        for tool in services::loki::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
     if name_lower.contains("muninn") {
         for tool in services::muninn::tools() {
             tracing::info!("  ✅ registered tool: {}", tool.name);
@@ -277,6 +283,12 @@ pub fn build_app(
             tracing::info!("  ✅ registered tool: {}", tool.name);
             registry.register(tool);
         }
+    }
+
+    // Claude CLI tools — available for all services (used by Odin/Frigg dispatch)
+    for tool in services::claude_cli::tools() {
+        tracing::info!("  ✅ registered tool: {}", tool.name);
+        registry.register(tool);
     }
 
     if registry.count() == 0 {
@@ -398,6 +410,9 @@ mod tests {
         for tool in services::insurance::tools() {
             registry.register(tool);
         }
+        for tool in services::claude_cli::tools() {
+            registry.register(tool);
+        }
 
         // We use a mock upstream URL (tests won't actually call it for these tests)
         let state = Arc::new(AppState {
@@ -467,9 +482,9 @@ mod tests {
         // mimir.rs grew to 11 tools (Sprint 2 W2.5 added 6 PrimeKG graph-native
         // tools: lookup_entity / neighbors / drug_interactions / disease_drugs /
         // symptom_to_disease / path); syn.rs adds 1 (ocr_extract); insurance.rs
-        // adds 2. Bump this count when adding or removing tools from any
+        // adds 2; claude_cli.rs adds 3. Bump this count when adding or removing tools from any
         // service module.
-        let expected_tools = 32;
+        let expected_tools = 35;
         let tools = result["tools"].as_array().unwrap();
         assert_eq!(tools.len(), expected_tools);
     }
