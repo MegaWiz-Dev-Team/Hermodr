@@ -212,6 +212,12 @@ pub fn build_app(
             registry.register(tool);
         }
     }
+    if name_lower.contains("analytics") {
+        for tool in services::analytics::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
     if name_lower.contains("bifrost") {
         for tool in services::bifrost::tools() {
             tracing::info!("  ✅ registered tool: {}", tool.name);

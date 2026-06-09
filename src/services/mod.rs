@@ -16,6 +16,8 @@ pub mod odin;
 pub mod ratatoskr;
 // Sprint 50 B-50d: Syn — OCR / vision tools (chandra + PaddleOCR + Gemini)
 pub mod syn;
+// ADR-024: Asgard Analytics — dataset/query/plot tools (mimir-lab)
+pub mod analytics;
 pub mod insurance;
 pub mod vardr;
 pub mod wazuh;
