@@ -127,6 +127,21 @@ pub fn tools() -> Vec<ToolDefinition> {
             }),
         },
         ToolDefinition {
+            name: "primekg_disease_relations".into(),
+            description: "One-shot: given a disease name or a question mentioning a disease, return that disease's directly-connected PrimeKG entities (associated drugs, phenotypes, related diseases — whatever edges exist). Use this to ground an answer about what a disease is connected to/causes/treated-by when you only have the disease as free text and not an entity_id. Takes a plain `query` string.".into(),
+            method: "POST".into(),
+            path: "/api/v1/knowledge/primekg/disease_relations".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "query": { "type": "string", "description": "Disease name or a question mentioning a disease (Thai or English). The disease is extracted and resolved to a PrimeKG node automatically." },
+                    "limit": { "type": "integer", "description": "Max connected entities (1-50, default 15)", "minimum": 1, "maximum": 50, "default": 15 },
+                    "tenant_id": { "type": "string", "description": "Tenant ID" }
+                },
+                "required": ["query", "tenant_id"]
+            }),
+        },
+        ToolDefinition {
             name: "primekg_drug_interactions".into(),
             description: "Return known drug-drug interactions for a given drug (PrimeKG drug_drug edges). Each result includes the interacting drug + display_relation describing the interaction mechanism. Used by eir-pharmacy for DDI safety screens — should be invoked before any prescription action.".into(),
             method: "POST".into(),
@@ -246,6 +261,7 @@ mod tests {
         for expected in [
             "primekg_lookup_entity",
             "primekg_neighbors",
+            "primekg_disease_relations",
             "primekg_drug_interactions",
             "primekg_disease_drugs",
             "primekg_symptom_to_disease",
