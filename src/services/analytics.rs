@@ -83,6 +83,133 @@ pub fn tools() -> Vec<ToolDefinition> {
                 "required": ["tenant_id", "sql", "chart_type", "x", "y"]
             }),
         },
+        // ── spatial (mimir-geo) — geometry is (lat, lng); pure compute, no tenant_id ──
+        ToolDefinition {
+            name: "geo_distance".into(),
+            description: "Great-circle (haversine) distance between two points, in metres.".into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/geo/distance".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "a": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "[lat, lng]" },
+                    "b": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2, "description": "[lat, lng]" }
+                },
+                "required": ["a", "b"]
+            }),
+        },
+        ToolDefinition {
+            name: "geo_buffer".into(),
+            description: "Circular buffer around a point: returns the polygon ring ([lat,lng] vertices) \
+                          at radius_m metres (e.g. a catchment area)."
+                .into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/geo/buffer".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "lat": { "type": "number" },
+                    "lng": { "type": "number" },
+                    "radius_m": { "type": "number", "description": "Buffer radius in metres" },
+                    "segments": { "type": "integer", "description": "Ring vertices (default 32)" }
+                },
+                "required": ["lat", "lng", "radius_m"]
+            }),
+        },
+        ToolDefinition {
+            name: "geo_join".into(),
+            description: "Point-in-polygon join: for each point, the index of the first polygon that \
+                          contains it (or null). Use to assign points to regions."
+                .into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/geo/join".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "points": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "description": "[[lat,lng], ...]" },
+                    "polygons": { "type": "array", "items": { "type": "array", "items": { "type": "array", "items": { "type": "number" } } }, "description": "[[[lat,lng], ...outer ring], ...]" }
+                },
+                "required": ["points", "polygons"]
+            }),
+        },
+        ToolDefinition {
+            name: "geo_choropleth".into(),
+            description: "Classify numeric values into choropleth classes (0..classes). method = \
+                          equal_interval | quantile (default quantile)."
+                .into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/geo/choropleth".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "values": { "type": "array", "items": { "type": "number" } },
+                    "classes": { "type": "integer", "description": "Number of classes (≥1)" },
+                    "method": { "type": "string", "enum": ["equal_interval", "quantile"], "description": "default quantile" }
+                },
+                "required": ["values", "classes"]
+            }),
+        },
+        ToolDefinition {
+            name: "geo_h3".into(),
+            description: "Aggregate points into Uber H3 hexagons at the given resolution (0–15). \
+                          Returns [{cell, count}] — the heatmap binning."
+                .into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/geo/h3".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "points": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "description": "[[lat,lng], ...]" },
+                    "resolution": { "type": "integer", "description": "H3 resolution 0 (coarse) – 15 (fine)" }
+                },
+                "required": ["points", "resolution"]
+            }),
+        },
+        ToolDefinition {
+            name: "geo_ingest".into(),
+            description: "Summarise a GeoJSON document: feature count, geometry-type histogram, bbox, \
+                          and property keys (candidate attribute columns)."
+                .into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/geo/ingest".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "geojson": { "type": "string", "description": "GeoJSON FeatureCollection/Feature/Geometry as a string" }
+                },
+                "required": ["geojson"]
+            }),
+        },
+        ToolDefinition {
+            name: "stats_moran".into(),
+            description: "Global Moran's I spatial autocorrelation over points with values, using \
+                          binary distance-band weights (≤ threshold_m). ≈+1 clustered, ≈0 random, ≈−1 dispersed."
+                .into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/stats/moran".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "points": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "description": "[[lat,lng], ...]" },
+                    "values": { "type": "array", "items": { "type": "number" }, "description": "value per point (same length as points)" },
+                    "threshold_m": { "type": "number", "description": "neighbour distance band in metres" }
+                },
+                "required": ["points", "values", "threshold_m"]
+            }),
+        },
+        ToolDefinition {
+            name: "stats_nn".into(),
+            description: "Mean nearest-neighbour distance (metres) — a point-pattern summary (Clark–Evans style).".into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/stats/nn".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "points": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }, "description": "[[lat,lng], ...]" }
+                },
+                "required": ["points"]
+            }),
+        },
     ]
 }
 
@@ -92,15 +219,27 @@ mod tests {
 
     #[test]
     fn test_tool_count() {
-        assert_eq!(tools().len(), 4);
+        assert_eq!(tools().len(), 12); // 4 tabular + 6 geo_* + 2 stats_*
     }
 
     #[test]
     fn tool_names_match_analyst_allowlist() {
         let defs = tools();
         let names: Vec<&str> = defs.iter().map(|t| t.name.as_str()).collect();
-        for expected in ["dataset_list", "dataset_profile", "run_sql", "plot"] {
+        for expected in [
+            "dataset_list", "dataset_profile", "run_sql", "plot",
+            "geo_distance", "geo_buffer", "geo_join", "geo_choropleth", "geo_h3", "geo_ingest",
+            "stats_moran", "stats_nn",
+        ] {
             assert!(names.contains(&expected), "missing tool {expected}");
+        }
+    }
+
+    #[test]
+    fn geo_paths_are_under_analytics() {
+        for t in tools().iter().filter(|t| t.name.starts_with("geo_") || t.name.starts_with("stats_")) {
+            assert!(t.path.starts_with("/api/v1/analytics/"), "bad path for {}: {}", t.name, t.path);
+            assert_eq!(t.method, "POST");
         }
     }
 
