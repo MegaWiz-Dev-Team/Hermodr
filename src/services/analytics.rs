@@ -210,6 +210,25 @@ pub fn tools() -> Vec<ToolDefinition> {
                 "required": ["points"]
             }),
         },
+        // ── research RAG (mimir-api knowledge/search via analytics-api shim) ──
+        ToolDefinition {
+            name: "lit_search".into(),
+            description: "Search the local Mimir knowledge base (RAG) for a research question — \
+                          returns ranked KB hits (codes / labels / passages) to ground and cite a \
+                          research answer. Offline: local KBs only (no external arXiv/Semantic Scholar)."
+                .into(),
+            method: "POST".into(),
+            path: "/api/v1/analytics/lit_search".into(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "tenant_id": { "type": "string", "description": "Tenant ID" },
+                    "q": { "type": "string", "description": "Research query / topic" },
+                    "limit": { "type": "integer", "description": "Max hits (default 10)" }
+                },
+                "required": ["tenant_id", "q"]
+            }),
+        },
     ]
 }
 
@@ -219,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_tool_count() {
-        assert_eq!(tools().len(), 12); // 4 tabular + 6 geo_* + 2 stats_*
+        assert_eq!(tools().len(), 13); // 4 tabular + 6 geo_* + 2 stats_* + lit_search
     }
 
     #[test]
@@ -229,7 +248,7 @@ mod tests {
         for expected in [
             "dataset_list", "dataset_profile", "run_sql", "plot",
             "geo_distance", "geo_buffer", "geo_join", "geo_choropleth", "geo_h3", "geo_ingest",
-            "stats_moran", "stats_nn",
+            "stats_moran", "stats_nn", "lit_search",
         ] {
             assert!(names.contains(&expected), "missing tool {expected}");
         }
