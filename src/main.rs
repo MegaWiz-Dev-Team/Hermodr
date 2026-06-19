@@ -218,6 +218,12 @@ pub fn build_app(
             registry.register(tool);
         }
     }
+    if name_lower.contains("vor") {
+        for tool in services::vor_tools::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
     if name_lower.contains("bifrost") {
         for tool in services::bifrost::tools() {
             tracing::info!("  ✅ registered tool: {}", tool.name);

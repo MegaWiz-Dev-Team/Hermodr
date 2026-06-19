@@ -18,6 +18,8 @@ pub mod ratatoskr;
 pub mod syn;
 // ADR-024: Asgard Analytics — dataset/query/plot tools (mimir-lab)
 pub mod analytics;
+// asgard_vor: resolve_place + supply-chain graph tools (upstream = asgard-vor)
+pub mod vor_tools;
 pub mod insurance;
 pub mod vardr;
 pub mod wazuh;
