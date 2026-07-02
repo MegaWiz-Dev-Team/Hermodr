@@ -18,6 +18,8 @@ pub mod ratatoskr;
 pub mod syn;
 // ADR-024: Asgard Analytics — dataset/query/plot tools (mimir-lab)
 pub mod analytics;
+// Askr — faculty exam-authoring studio (MEQ/OSCE/blueprint/standard-setting)
+pub mod askr;
 pub mod insurance;
 pub mod vardr;
 pub mod wazuh;

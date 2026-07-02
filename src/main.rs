@@ -126,6 +126,12 @@ async fn rpc_handler(
                 }
             }
 
+            // Askr is x-askr-faculty-scoped; inject the agent's faculty identity.
+            if state.service_name.to_lowercase().contains("askr") {
+                let fid = std::env::var("ASKR_FACULTY_ID").unwrap_or_else(|_| "1".into());
+                fwd_headers.push(("x-askr-faculty".to_string(), fid));
+            }
+
             // Call upstream
             match state
                 .proxy
@@ -214,6 +220,12 @@ pub fn build_app(
     }
     if name_lower.contains("analytics") {
         for tool in services::analytics::tools() {
+            tracing::info!("  ✅ registered tool: {}", tool.name);
+            registry.register(tool);
+        }
+    }
+    if name_lower.contains("askr") {
+        for tool in services::askr::tools() {
             tracing::info!("  ✅ registered tool: {}", tool.name);
             registry.register(tool);
         }
